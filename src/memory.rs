@@ -1,26 +1,20 @@
 use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
 use x86_64::{
     structures::paging::{
-        FrameAllocator, OffsetPageTable, PageTable, PhysFrame, Size4KiB, UnusedPhysFrame,
+        FrameAllocator, PageTable, PhysFrame, RecursivePageTable, Size4KiB, UnusedPhysFrame,
     },
     PhysAddr, VirtAddr,
 };
 
 unsafe fn active_level_4_table(physical_memory_offset: VirtAddr) -> &'static mut PageTable {
-    use x86_64::registers::control::Cr3;
-
-    let (level_4_table_frame, _) = Cr3::read();
-
-    let phys = level_4_table_frame.start_address();
-    let virt = physical_memory_offset + phys.as_u64();
-    let page_table_ptr: *mut PageTable = virt.as_mut_ptr();
+    let page_table_ptr: *mut PageTable = physical_memory_offset.as_mut_ptr();
 
     &mut *page_table_ptr
 }
 
-pub unsafe fn init(physical_memory_offset: VirtAddr) -> OffsetPageTable<'static> {
+pub unsafe fn init(physical_memory_offset: VirtAddr) -> RecursivePageTable<'static> {
     let level_4_table = active_level_4_table(physical_memory_offset);
-    OffsetPageTable::new(level_4_table, physical_memory_offset)
+    RecursivePageTable::new(level_4_table).expect("New Recursive page table")
 }
 
 pub struct BootInfoFrameAllocator {
@@ -35,9 +29,6 @@ impl BootInfoFrameAllocator {
             next: 0,
         }
     }
-}
-
-impl BootInfoFrameAllocator {
     /// Returns an iterator over the usable frames specified in the memory map.
     fn usable_frames(&self) -> impl Iterator<Item = UnusedPhysFrame> {
         // get usable regions from memory map
