@@ -85,11 +85,15 @@ extern "x86-interrupt" fn page_fault_handler(
 ) {
     use x86_64::registers::control::Cr2;
 
-    println!("EXCEPTION: PAGE FAULT");
-    println!("Accessed Address: {:?}", Cr2::read());
-    println!("Error Code: {:?}", error_code);
-    println!("{:#?}", stack_frame);
-    hlt_loop();
+    if !error_code.contains(PageFaultErrorCode::PROTECTION_VIOLATION) {
+        super::allocator::alloc_page(Cr2::read());
+    } else {
+        println!("EXCEPTION: PAGE FAULT");
+        println!("Accessed Address: {:?}", Cr2::read());
+        println!("Error Code: {:?}", error_code);
+        println!("{:#?}", stack_frame);
+        hlt_loop();
+    }
 }
 
 #[test_case]

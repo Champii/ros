@@ -1,36 +1,69 @@
+use super::memory::BootInfoFrameAllocator;
+use core::alloc::{AllocErr, Layout};
+use lazy_static::lazy_static;
+use linked_list_allocator::LockedHeap;
+use spin::Mutex;
 use x86_64::{
     structures::paging::{
-        mapper::MapToError, FrameAllocator, Mapper, Page, PageTableFlags, Size4KiB,
+        mapper::MapToError, FrameAllocator, Mapper, Page, PageTableFlags, RecursivePageTable,
+        Size4KiB,
     },
-    VirtAddr,
+    PhysAddr, VirtAddr,
 };
 
 pub const HEAP_START: usize = 0x_4444_4444_0000;
 pub const HEAP_SIZE: usize = 100 * 1024; // 100 KiB
 
-pub fn init_heap(
-    mapper: &mut impl Mapper<Size4KiB>,
-    frame_allocator: &mut impl FrameAllocator<Size4KiB>,
-) -> Result<(), MapToError> {
-    let page_range = {
-        let heap_start = VirtAddr::new(HEAP_START as u64);
-        let heap_end = heap_start + HEAP_SIZE - 1u64;
-        let heap_start_page = Page::containing_address(heap_start);
-        let heap_end_page = Page::containing_address(heap_end);
-        Page::range_inclusive(heap_start_page, heap_end_page)
-    };
+#[global_allocator]
+static ALLOCATOR: LockedHeap = LockedHeap::empty();
 
-    for page in page_range {
-        let frame = frame_allocator
-            .allocate_frame()
-            .ok_or(MapToError::FrameAllocationFailed)?;
-        let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
-        mapper.map_to(page, frame, flags, frame_allocator)?.flush();
-    }
+#[alloc_error_handler]
+fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
+    panic!("allocation error: {:?}", layout)
+}
+
+pub fn init_heap() -> Result<(), MapToError> {
+    let heap_start = VirtAddr::new(HEAP_START as u64);
+
+    alloc_page(heap_start);
 
     unsafe {
-        super::ALLOCATOR.lock().init(HEAP_START, HEAP_SIZE);
+        ALLOCATOR.lock().init(HEAP_START, HEAP_SIZE);
     }
 
     Ok(())
+}
+
+pub fn alloc_page(page_addr: VirtAddr) {
+    let page_addr: Page<Size4KiB> = Page::containing_address(page_addr);
+
+    if let Some(ref mut falloc) = *FRAME_ALLOCATOR.lock() {
+        let frame = falloc
+            .allocate_frame()
+            .ok_or(MapToError::FrameAllocationFailed)
+            .unwrap();
+
+        let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
+
+        if let Some(ref mut mapper) = *MAPPER.lock() {
+            mapper
+                .map_to(page_addr, frame, flags, falloc)
+                .unwrap()
+                .flush();
+        }
+    }
+}
+
+pub fn kmalloc(size: usize) -> Result<core::ptr::NonNull<u8>, AllocErr> {
+    ALLOCATOR
+        .lock()
+        .allocate_first_fit(Layout::for_value(&size))
+}
+
+lazy_static! {
+    pub static ref MAPPER: Mutex<Option<RecursivePageTable<'static>>> = { Mutex::new(None) };
+}
+
+lazy_static! {
+    pub static ref FRAME_ALLOCATOR: Mutex<Option<BootInfoFrameAllocator>> = { Mutex::new(None) };
 }
