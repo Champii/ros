@@ -6,17 +6,17 @@
 
 use core::panic::PanicInfo;
 
-#[no_mangle] // don't mangle the name of this function
-pub extern "C" fn _start() -> ! {
+use bootloader::{entry_point, BootInfo};
+
+entry_point!(main);
+
+fn main(boot_info: &'static BootInfo) -> ! {
+    ros::init(boot_info);
+
     test_main();
 
     loop {}
 }
-
-fn test_runner(tests: &[&dyn Fn()]) {
-    unimplemented!();
-}
-
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {

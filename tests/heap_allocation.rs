@@ -14,17 +14,10 @@ use ros::{serial_print, serial_println};
 entry_point!(main);
 
 fn main(boot_info: &'static BootInfo) -> ! {
-    use ros::allocator;
-    use ros::memory::{self, BootInfoFrameAllocator};
-    use x86_64::VirtAddr;
-
-    ros::init();
-    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);
-    let mut mapper = unsafe { memory::init(phys_mem_offset) };
-    let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&boot_info.memory_map) };
-    allocator::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
+    ros::init(boot_info);
 
     test_main();
+
     loop {}
 }
 

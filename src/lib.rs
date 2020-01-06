@@ -6,7 +6,12 @@
 
 extern crate alloc;
 
+#[cfg(test)]
+use bootloader::entry_point;
+
+use bootloader::BootInfo;
 use core::panic::PanicInfo;
+use linked_list_allocator::LockedHeap;
 
 pub mod allocator;
 pub mod gdt;
@@ -14,8 +19,6 @@ pub mod interrupts;
 pub mod memory;
 pub mod serial;
 pub mod vga_buffer;
-
-use linked_list_allocator::LockedHeap;
 
 #[global_allocator]
 static ALLOCATOR: LockedHeap = LockedHeap::empty();
@@ -33,29 +36,31 @@ pub fn hlt_loop() -> ! {
 
 pub fn test_runner(tests: &[&dyn Fn()]) {
     serial_println!("Running {} tests", tests.len());
+
     for test in tests {
         test();
     }
+
     exit_qemu(QemuExitCode::Success);
 }
 
 pub fn test_panic_handler(info: &PanicInfo) -> ! {
     serial_println!("[failed]\n");
+
     serial_println!("Error: {}\n", info);
+
     exit_qemu(QemuExitCode::Failed);
+
     hlt_loop();
 }
-
-/// Entry point for `cargo xtest`
-#[cfg(test)]
-use bootloader::{entry_point, BootInfo};
 
 #[cfg(test)]
 entry_point!(test_kernel_main);
 
 #[cfg(test)]
-fn test_kernel_main(_boot_info: &'static BootInfo) -> ! {
-    init();
+fn test_kernel_main(boot_info: &'static BootInfo) -> ! {
+    init(boot_info);
+
     test_main();
 
     hlt_loop();
@@ -83,9 +88,19 @@ pub fn exit_qemu(exit_code: QemuExitCode) {
     }
 }
 
-pub fn init() {
+pub fn init(boot_info: &'static BootInfo) {
+    use self::memory::BootInfoFrameAllocator;
+
+    use x86_64::VirtAddr;
+
     gdt::init();
     interrupts::init_idt();
-    unsafe { interrupts::PICS.lock().initialize() }; // new
+    unsafe { interrupts::PICS.lock().initialize() };
     x86_64::instructions::interrupts::enable();
+
+    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);
+    let mut mapper = unsafe { memory::init(phys_mem_offset) };
+    let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&boot_info.memory_map) };
+
+    allocator::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
 }
