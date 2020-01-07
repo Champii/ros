@@ -1,4 +1,5 @@
 use super::memory::BootInfoFrameAllocator;
+use super::serial_println;
 use core::alloc::{AllocErr, Layout};
 use lazy_static::lazy_static;
 use linked_list_allocator::LockedHeap;
@@ -8,8 +9,16 @@ use x86_64::{
         mapper::MapToError, FrameAllocator, Mapper, Page, PageTableFlags, RecursivePageTable,
         Size4KiB,
     },
-    PhysAddr, VirtAddr,
+    VirtAddr,
 };
+
+lazy_static! {
+    pub static ref MAPPER: Mutex<Option<RecursivePageTable<'static>>> = { Mutex::new(None) };
+}
+
+lazy_static! {
+    pub static ref FRAME_ALLOCATOR: Mutex<Option<BootInfoFrameAllocator>> = { Mutex::new(None) };
+}
 
 pub const HEAP_START: usize = 0x_4444_4444_0000;
 pub const HEAP_SIZE: usize = 100 * 1024; // 100 KiB
@@ -23,10 +32,6 @@ fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
 }
 
 pub fn init_heap() -> Result<(), MapToError> {
-    let heap_start = VirtAddr::new(HEAP_START as u64);
-
-    alloc_page(heap_start);
-
     unsafe {
         ALLOCATOR.lock().init(HEAP_START, HEAP_SIZE);
     }
@@ -35,6 +40,8 @@ pub fn init_heap() -> Result<(), MapToError> {
 }
 
 pub fn alloc_page(page_addr: VirtAddr) {
+    serial_println!("Alloc page {:#?}", page_addr,);
+
     let page_addr: Page<Size4KiB> = Page::containing_address(page_addr);
 
     if let Some(ref mut falloc) = *FRAME_ALLOCATOR.lock() {
@@ -58,12 +65,4 @@ pub fn kmalloc(size: usize) -> Result<core::ptr::NonNull<u8>, AllocErr> {
     ALLOCATOR
         .lock()
         .allocate_first_fit(Layout::for_value(&size))
-}
-
-lazy_static! {
-    pub static ref MAPPER: Mutex<Option<RecursivePageTable<'static>>> = { Mutex::new(None) };
-}
-
-lazy_static! {
-    pub static ref FRAME_ALLOCATOR: Mutex<Option<BootInfoFrameAllocator>> = { Mutex::new(None) };
 }

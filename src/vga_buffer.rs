@@ -3,9 +3,6 @@ use lazy_static::lazy_static;
 use spin::Mutex;
 use volatile::Volatile;
 
-#[cfg(test)]
-use crate::{serial_print, serial_println};
-
 lazy_static! {
     pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
         column_position: 0,
@@ -147,6 +144,11 @@ pub fn _print(args: fmt::Arguments) {
         WRITER.lock().write_fmt(args).unwrap();
     });
 }
+
+// tests
+
+#[cfg(test)]
+use crate::{serial_print, serial_println};
 
 #[test_case]
 fn test_println_simple() {

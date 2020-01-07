@@ -11,24 +11,21 @@
 
 extern crate alloc;
 
-#[cfg(test)]
-use bootloader::entry_point;
-
 use bootloader::BootInfo;
 use core::panic::PanicInfo;
 use lazy_static::lazy_static;
 use spin::Mutex;
-use x86_64::{
-    structures::paging::{
-        FrameAllocator, PageTable, PhysFrame, RecursivePageTable, Size4KiB, UnusedPhysFrame,
-    },
-    PhysAddr, VirtAddr,
-};
+use x86_64::VirtAddr;
+
+lazy_static! {
+    static ref BOOTINFO: Mutex<Option<&'static BootInfo>> = { Mutex::new(None) };
+}
 
 pub mod allocator;
 pub mod gdt;
 pub mod interrupts;
 pub mod memory;
+pub mod schedule;
 pub mod serial;
 pub mod vga_buffer;
 
@@ -37,6 +34,46 @@ pub fn hlt_loop() -> ! {
         x86_64::instructions::hlt();
     }
 }
+
+pub fn init(boot_info: &'static BootInfo) {
+    serial_println!("Kernel init: {:#?}", boot_info);
+
+    use self::memory::BootInfoFrameAllocator;
+
+    *BOOTINFO.lock() = Some(boot_info);
+
+    gdt::init();
+
+    interrupts::init_idt();
+    unsafe { interrupts::PICS.lock().initialize() };
+
+    serial_println!("Enabling interrupts");
+
+    x86_64::instructions::interrupts::enable();
+
+    serial_println!("Init Paging");
+
+    let level_4_table_addr = VirtAddr::new(boot_info.recursive_page_table_addr);
+    let mapper = unsafe { memory::init(level_4_table_addr) };
+
+    let frame_allocator = unsafe { BootInfoFrameAllocator::init(&boot_info.memory_map) };
+
+    *allocator::MAPPER.lock() = Some(mapper);
+    *allocator::FRAME_ALLOCATOR.lock() = Some(frame_allocator);
+
+    serial_println!("Init Kernel Heap");
+
+    allocator::init_heap().expect("heap initialization failed");
+
+    serial_println!("Starting Schduler");
+
+    schedule::init();
+}
+
+// tests
+
+#[cfg(test)]
+use bootloader::entry_point;
 
 pub fn test_runner(tests: &[&dyn Fn()]) {
     serial_println!("Running {} tests", tests.len());
@@ -90,28 +127,4 @@ pub fn exit_qemu(exit_code: QemuExitCode) {
         let mut port = Port::new(0xf4);
         port.write(exit_code as u32);
     }
-}
-
-pub fn init(boot_info: &'static BootInfo) {
-    use self::memory::BootInfoFrameAllocator;
-
-    *BOOTINFO.lock() = Some(boot_info);
-
-    gdt::init();
-    interrupts::init_idt();
-    unsafe { interrupts::PICS.lock().initialize() };
-    x86_64::instructions::interrupts::enable();
-
-    let level_4_table_addr = VirtAddr::new(boot_info.recursive_page_table_addr);
-    let mapper = unsafe { memory::init(level_4_table_addr) };
-    let frame_allocator = unsafe { BootInfoFrameAllocator::init(&boot_info.memory_map) };
-
-    *allocator::MAPPER.lock() = Some(mapper);
-    *allocator::FRAME_ALLOCATOR.lock() = Some(frame_allocator);
-
-    allocator::init_heap().expect("heap initialization failed");
-}
-
-lazy_static! {
-    static ref BOOTINFO: Mutex<Option<&'static BootInfo>> = { Mutex::new(None) };
 }

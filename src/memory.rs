@@ -1,6 +1,4 @@
 use bootloader::bootinfo::{MemoryMap, MemoryRegionType};
-use lazy_static::lazy_static;
-use spin::Mutex;
 use x86_64::{
     structures::paging::{
         FrameAllocator, PageTable, PhysFrame, RecursivePageTable, Size4KiB, UnusedPhysFrame,
@@ -13,10 +11,6 @@ unsafe fn active_level_4_table(physical_memory_offset: VirtAddr) -> &'static mut
 
     &mut *page_table_ptr
 }
-
-// lazy_static! {
-//     static ref MAPPER: Mutex<RecursivePageTable<'static>> = { init() };
-// }
 
 pub unsafe fn init(physical_memory_offset: VirtAddr) -> RecursivePageTable<'static> {
     let level_4_table = active_level_4_table(physical_memory_offset);

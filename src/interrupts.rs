@@ -6,31 +6,50 @@ use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
 
 use crate::gdt;
 use crate::hlt_loop;
-use crate::{print, println};
-
-#[cfg(test)]
-use crate::{serial_print, serial_println};
+use crate::{print, println, serial_println};
 
 lazy_static! {
     static ref IDT: InterruptDescriptorTable = {
+        serial_println!("   Create IDT:");
+
         let mut idt = InterruptDescriptorTable::new();
+
+        serial_println!("       Set Breackpoint handler");
+
         idt.breakpoint.set_handler_fn(breakpoint_handler);
+
+        serial_println!("       Set DoubleFault handler");
+
         unsafe {
             idt.double_fault
                 .set_handler_fn(double_fault_handler)
                 .set_stack_index(gdt::DOUBLE_FAULT_IST_INDEX);
         }
+
+        serial_println!("       Set PIC handler");
+
         idt[InterruptIndex::Timer.as_usize()].set_handler_fn(timer_interrupt_handler);
+
+        serial_println!("       Set Keyboard handler");
+
         idt[InterruptIndex::Keyboard.as_usize()].set_handler_fn(keyboard_interrupt_handler);
+
+        serial_println!("       Set PageFault handler");
+
         idt.page_fault.set_handler_fn(page_fault_handler);
+
         idt
     };
 }
 pub fn init_idt() {
+    serial_println!("Init IDT:");
+
     IDT.load();
 }
 
 extern "x86-interrupt" fn breakpoint_handler(stack_frame: &mut InterruptStackFrame) {
+    serial_println!("INTERRUPT: Breakpoint: {:#?}", stack_frame);
+
     println!("EXCEPTION: BREAKPOINT\n{:#?}", stack_frame);
 }
 
@@ -38,11 +57,17 @@ extern "x86-interrupt" fn double_fault_handler(
     stack_frame: &mut InterruptStackFrame,
     _error_code: u64,
 ) -> ! {
+    serial_println!(
+        "INTERRUPT: DOUBLE FAULT: {:#?} ({})",
+        stack_frame,
+        _error_code
+    );
+
     panic!("EXCEPTION: DOUBLE FAULT\n{:#?}", stack_frame);
 }
 
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: &mut InterruptStackFrame) {
-    print!(".");
+    // serial_println!("INTERRUPT: Timer: {:#?}", _stack_frame);
 
     unsafe {
         PICS.lock()
@@ -88,19 +113,17 @@ extern "x86-interrupt" fn page_fault_handler(
     if !error_code.contains(PageFaultErrorCode::PROTECTION_VIOLATION) {
         super::allocator::alloc_page(Cr2::read());
     } else {
+        serial_println!(
+            "INTERRUPT: PageFault: {:#?} ({:#?})",
+            stack_frame,
+            error_code
+        );
         println!("EXCEPTION: PAGE FAULT");
         println!("Accessed Address: {:?}", Cr2::read());
         println!("Error Code: {:?}", error_code);
         println!("{:#?}", stack_frame);
         hlt_loop();
     }
-}
-
-#[test_case]
-fn test_breakpoint_exception() {
-    serial_print!("test_breakpoint_exception...");
-    x86_64::instructions::interrupts::int3();
-    serial_println!("[ok]");
 }
 
 pub const PIC_1_OFFSET: u8 = 32;
@@ -124,4 +147,16 @@ impl InterruptIndex {
     fn as_usize(self) -> usize {
         usize::from(self.as_u8())
     }
+}
+
+// tests
+
+#[cfg(test)]
+use crate::serial_print;
+
+#[test_case]
+fn test_breakpoint_exception() {
+    serial_print!("test_breakpoint_exception...");
+    x86_64::instructions::interrupts::int3();
+    serial_println!("[ok]");
 }

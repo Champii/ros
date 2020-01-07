@@ -10,44 +10,48 @@ use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
 use ros::{hlt_loop, println};
 
-use alloc::{boxed::Box, rc::Rc, vec, vec::Vec};
+// use alloc::{boxed::Box, rc::Rc, vec, vec::Vec};
+
+use ros::serial_println;
 
 entry_point!(kernel_main);
 
 fn kernel_main(boot_info: &'static BootInfo) -> ! {
-    println!("Hello World{}", "!");
+    serial_println!("Starting kernel...");
 
     ros::init(boot_info);
 
-    // allocate a number on the heap
-    let heap_value = Box::new(41);
-    println!("heap_value at {:p}", heap_value);
+    serial_println!("Kernel started.");
 
-    // create a dynamically sized vector
-    let mut vec = Vec::new();
-    for i in 0..50000 {
-        vec.push(i);
-    }
+    // // allocate a number on the heap
+    // let heap_value = Box::new(41);
+    // println!("heap_value at {:p}", heap_value);
 
-    println!("vec at {:p}", vec.as_slice());
+    // // create a dynamically sized vector
+    // let mut vec = Vec::new();
+    // for i in 0..5000 {
+    //     vec.push(i);
+    // }
 
-    // create a reference counted vector -> will be freed when count reaches 0
-    let reference_counted = Rc::new(vec![1, 2, 3]);
-    let cloned_reference = reference_counted.clone();
-    println!(
-        "current reference count is {}",
-        Rc::strong_count(&cloned_reference)
-    );
-    core::mem::drop(reference_counted);
-    println!(
-        "reference count is {} now",
-        Rc::strong_count(&cloned_reference)
-    );
+    // println!("vec at {:p}", vec.as_slice());
+
+    // // create a reference counted vector -> will be freed when count reaches 0
+    // let reference_counted = Rc::new(vec![1, 2, 3]);
+    // let cloned_reference = reference_counted.clone();
+    // println!(
+    //     "current reference count is {}",
+    //     Rc::strong_count(&cloned_reference)
+    // );
+    // core::mem::drop(reference_counted);
+    // println!(
+    //     "reference count is {} now",
+    //     Rc::strong_count(&cloned_reference)
+    // );
 
     #[cfg(test)]
     test_main();
 
-    println!("NOT CRASHED!");
+    println!("OK!");
 
     hlt_loop();
 }
