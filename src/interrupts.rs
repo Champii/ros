@@ -14,6 +14,32 @@ lazy_static! {
 
         let mut idt = InterruptDescriptorTable::new();
 
+
+        idt.divide_error.set_handler_fn(not_implemented_yet);
+        idt.debug.set_handler_fn(not_implemented_yet);
+        idt.non_maskable_interrupt
+            .set_handler_fn(not_implemented_yet);
+        idt.breakpoint.set_handler_fn(not_implemented_yet);
+        idt.overflow.set_handler_fn(not_implemented_yet);
+        idt.bound_range_exceeded.set_handler_fn(not_implemented_yet);
+        idt.invalid_opcode.set_handler_fn(not_implemented_yet);
+        idt.device_not_available.set_handler_fn(not_implemented_yet);
+        idt.invalid_tss.set_handler_fn(not_implemented_yet_code);
+        idt.segment_not_present
+            .set_handler_fn(not_implemented_yet_code);
+        idt.stack_segment_fault
+            .set_handler_fn(not_implemented_yet_code);
+        idt.general_protection_fault
+            .set_handler_fn(not_implemented_yet_code);
+        idt.x87_floating_point.set_handler_fn(not_implemented_yet);
+        idt.alignment_check.set_handler_fn(not_implemented_yet_code);
+        // idt.machine_check.set_handler_fn(not_implemented_yet);
+        idt.simd_floating_point.set_handler_fn(not_implemented_yet);
+        idt.virtualization.set_handler_fn(not_implemented_yet);
+        idt.security_exception
+            .set_handler_fn(not_implemented_yet_code);
+
+
         serial_println!("       Set Breackpoint handler");
 
         idt.breakpoint.set_handler_fn(breakpoint_handler);
@@ -47,6 +73,22 @@ pub fn init_idt() {
     IDT.load();
 }
 
+extern "x86-interrupt" fn not_implemented_yet(stack_frame: &mut InterruptStackFrame) {
+    serial_println!("INTERRUPT: NOT IMPLEMENTED: {:#?}", stack_frame);
+
+    println!("EXCEPTION: NOT IMPLEMENTED\n{:#?}", stack_frame);
+
+    loop {}
+}
+
+extern "x86-interrupt" fn not_implemented_yet_code(
+    stack_frame: &mut InterruptStackFrame,
+    _error_code: u64,
+) {
+    serial_println!("INTERRUPT: NOT IMPLEMENTED: {:#?}", stack_frame);
+    println!("EXCEPTION: NOT IMPLEMENTED\n{:#?}", stack_frame);
+    loop {}
+}
 extern "x86-interrupt" fn breakpoint_handler(stack_frame: &mut InterruptStackFrame) {
     serial_println!("INTERRUPT: Breakpoint: {:#?}", stack_frame);
 

@@ -4,6 +4,9 @@ version = "0.1.0"
 authors = ["Champii <contact@champii.io>"]
 edition = "2018"
 
+[lib]
+crate-type = ["staticlib"]
+
 [dependencies]
 # bootloader = { version = "0.8.0", features = ["map_physical_memory"]}
 bootloader = { version = "0.8.0", features = ["recursive_page_table"]}
@@ -14,6 +17,7 @@ uart_16550 = "0.2.0"
 pic8259_simple = "0.1.1"
 pc-keyboard = "0.3.1"
 linked_list_allocator = "0.6.4"
+multiboot2 = "0.1.0"
 
 [dependencies.lazy_static]
 version = "1.0"
