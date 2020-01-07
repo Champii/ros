@@ -59,7 +59,7 @@ pub fn init(boot_info: &'static BootInformation) {
     gdt::init();
 
     interrupts::init_idt();
-    serial_println!("LOL@");
+
     unsafe { interrupts::PICS.lock().initialize() };
 
     serial_println!("Enabling interrupts");
@@ -67,22 +67,21 @@ pub fn init(boot_info: &'static BootInformation) {
     x86_64::instructions::interrupts::enable();
 
     serial_println!("Init Paging");
+    let mapper = unsafe { memory::init() };
+    serial_println!("PAGETABLE {:#?}", mapper);
 
-    // let level_4_table_addr = VirtAddr::new(boot_info.recursive_page_table_addr);
-    // let mapper = unsafe { memory::init(level_4_table_addr) };
+    let frame_allocator = unsafe { BootInfoFrameAllocator::init() };
 
-    // let frame_allocator = unsafe { BootInfoFrameAllocator::init(&boot_info.memory_map) };
+    *allocator::MAPPER.lock() = Some(mapper);
+    *allocator::FRAME_ALLOCATOR.lock() = Some(frame_allocator);
 
-    // *allocator::MAPPER.lock() = Some(mapper);
-    // *allocator::FRAME_ALLOCATOR.lock() = Some(frame_allocator);
+    serial_println!("Init Kernel Heap");
 
-    // serial_println!("Init Kernel Heap");
+    allocator::init_heap().expect("heap initialization failed");
 
-    // allocator::init_heap().expect("heap initialization failed");
+    serial_println!("Starting Schduler");
 
-    // serial_println!("Starting Schduler");
-
-    // schedule::init();
+    schedule::init();
 }
 
 // tests
@@ -150,6 +149,8 @@ pub fn exit_qemu(exit_code: QemuExitCode) {
 
 // entry_point!(kernel_main);
 
+// use alloc::{boxed::Box, rc::Rc, vec, vec::Vec};
+
 // fn kernel_main(multiboot_information_address: usize) -> ! {
 #[no_mangle]
 pub extern "C" fn _start(multiboot_information_address: usize) -> ! {
@@ -202,7 +203,7 @@ pub extern "C" fn _start(multiboot_information_address: usize) -> ! {
 
     serial_println!("Kernel started.");
 
-    // // allocate a number on the heap
+    // allocate a number on the heap
     // let heap_value = Box::new(41);
     // println!("heap_value at {:p}", heap_value);
 

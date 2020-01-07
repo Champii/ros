@@ -11,3 +11,4 @@ Cargo.lock
 
 build/isofiles/boot/kernel.bin
 build/os.iso
+*.o
