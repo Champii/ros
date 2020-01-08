@@ -32,6 +32,8 @@ fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
 }
 
 pub fn init_heap() -> Result<(), MapToError> {
+    serial_println!("HERE2");
+
     unsafe {
         ALLOCATOR.lock().init(HEAP_START, HEAP_SIZE);
     }

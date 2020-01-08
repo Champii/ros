@@ -5,7 +5,7 @@ authors = ["Champii <contact@champii.io>"]
 edition = "2018"
 
 [lib]
-crate-type = ["staticlib"]
+crate-type = ["staticlib", "rlib"]
 
 [dependencies]
 # bootloader = { version = "0.8.0", features = ["map_physical_memory"]}
@@ -17,12 +17,12 @@ uart_16550 = "0.2.0"
 pic8259_simple = "0.1.1"
 pc-keyboard = "0.3.1"
 linked_list_allocator = "0.6.4"
-multiboot2 = "0.1.0"
+multiboot2 = "0.8.1"
+heapless = "0.5.1"
 
 [dependencies.lazy_static]
 version = "1.0"
 features = ["spin_no_std"]
-
 
 [package.metadata.bootimage]
 test-args = [

@@ -4,13 +4,16 @@
 #![test_runner(ros::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
-use core::panic::PanicInfo;
+// use core::panic::PanicInfo;
 
-use bootloader::{entry_point, BootInfo};
+// use bootloader::{entry_point, BootInfo};
 
-entry_point!(main);
+// entry_point!(main);
 
-fn main(boot_info: &'static BootInfo) -> ! {
+#[no_mangle]
+pub extern "C" fn _start(multiboot_information_address: usize) -> ! {
+    let boot_info = unsafe { multiboot2::load(multiboot_information_address) };
+
     ros::init(boot_info);
 
     test_main();
@@ -18,10 +21,10 @@ fn main(boot_info: &'static BootInfo) -> ! {
     loop {}
 }
 
-#[panic_handler]
-fn panic(info: &PanicInfo) -> ! {
-    ros::test_panic_handler(info)
-}
+// #[panic_handler]
+// fn panic(info: &PanicInfo) -> ! {
+//     ros::test_panic_handler(info)
+// }
 
 use ros::{println, serial_print, serial_println};
 

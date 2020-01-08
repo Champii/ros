@@ -11,9 +11,10 @@ use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
 use ros::{serial_print, serial_println};
 
-entry_point!(main);
+#[no_mangle]
+pub extern "C" fn _start(multiboot_information_address: usize) -> ! {
+    let boot_info = unsafe { multiboot2::load(multiboot_information_address) };
 
-fn main(boot_info: &'static BootInfo) -> ! {
     ros::init(boot_info);
 
     test_main();
@@ -49,9 +50,4 @@ fn many_boxes() {
         assert_eq!(*x, i);
     }
     serial_println!("[ok]");
-}
-
-#[panic_handler]
-fn panic(info: &PanicInfo) -> ! {
-    ros::test_panic_handler(info)
 }

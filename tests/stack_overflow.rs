@@ -22,11 +22,6 @@ fn stack_overflow() {
     stack_overflow();
 }
 
-#[panic_handler]
-fn panic(info: &PanicInfo) -> ! {
-    ros::test_panic_handler(info)
-}
-
 use lazy_static::lazy_static;
 use x86_64::structures::idt::InterruptDescriptorTable;
 
