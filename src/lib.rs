@@ -165,7 +165,7 @@ pub extern "C" fn _start(multiboot_information_address: usize) -> ! {
         );
     }
     // boot_info.
-    // serial_println!("modules: {:#?}", boot_info.module_tags());
+    serial_println!("modules: {:#?}", boot_info.module_tags());
     for module in boot_info.module_tags() {
         serial_println!("module: {:#?}", module);
         //     serial_println!(
@@ -181,6 +181,7 @@ pub extern "C" fn _start(multiboot_information_address: usize) -> ! {
         .expect("Elf-sections tag required");
 
     serial_println!("kernel sections:");
+
     for section in elf_sections_tag.sections() {
         serial_println!(
             "    addr: 0x{:x}, end: 0x{:x}, flags: 0x{:x}",
@@ -213,6 +214,31 @@ pub extern "C" fn _start(multiboot_information_address: usize) -> ! {
 
     init(multiboot_information_address);
 
+    use x86_64::{structures::paging::MapperAllSizes, VirtAddr};
+
+    let addresses = [
+        0,
+        // the identity-mapped vga buffer page
+        0xb8000,
+        // some code page
+        0x201008,
+        // some stack page
+        0x0100_0020_1a10,
+        // virtual address mapped to physical address 0
+        boot_info.start_address() as u64,
+        0x000100000,
+        0x444444440000,
+        0xffffffff_fffff000,
+    ];
+
+    for &address in &addresses {
+        let virt = VirtAddr::new(address);
+        // new: use the `mapper.translate_addr` method
+        if let Some(mapper) = &*allocator::MAPPER.lock() {
+            println!("{:?} -> {:?}", virt, mapper.translate_addr(virt));
+        };
+    }
+
     serial_println!("Kernel started.");
 
     use alloc::{boxed::Box, rc::Rc, vec, vec::Vec};
@@ -223,7 +249,7 @@ pub extern "C" fn _start(multiboot_information_address: usize) -> ! {
 
     // create a dynamically sized vector
     let mut vec = Vec::new();
-    for i in 0..5 {
+    for i in 0..5000 {
         vec.push(i);
     }
 

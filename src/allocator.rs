@@ -21,7 +21,7 @@ lazy_static! {
 }
 
 pub const HEAP_START: usize = 0x_4444_4444_0000;
-pub const HEAP_SIZE: usize = 100 * 1024; // 100 KiB
+pub const HEAP_SIZE: usize = 10000 * 1024; // 100 KiB
 
 #[global_allocator]
 static ALLOCATOR: LockedHeap = LockedHeap::empty();
@@ -42,8 +42,6 @@ pub fn init_heap() -> Result<(), MapToError> {
 }
 
 pub fn alloc_page(page_addr: VirtAddr) {
-    serial_println!("Alloc page {:#?}", page_addr,);
-
     let page_addr: Page<Size4KiB> = Page::containing_address(page_addr);
 
     if let Some(ref mut falloc) = *FRAME_ALLOCATOR.lock() {
@@ -51,8 +49,13 @@ pub fn alloc_page(page_addr: VirtAddr) {
             .allocate_frame()
             .ok_or(MapToError::FrameAllocationFailed)
             .unwrap();
-
         let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
+
+        serial_println!(
+            "Alloc page {:#?} -> {:#?}",
+            page_addr,
+            frame.start_address()
+        );
 
         if let Some(ref mut mapper) = *MAPPER.lock() {
             mapper
