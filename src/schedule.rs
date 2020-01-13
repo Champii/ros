@@ -5,7 +5,7 @@ use x86_64::{
     structures::paging::{
         PageTable, PageTableFlags, PageTableIndex, PhysFrame, RecursivePageTable,
     },
-    PhysAddr,
+    PhysAddr, VirtAddr,
 };
 
 lazy_static! {
@@ -82,15 +82,7 @@ impl Scheduler {
 
         self.tasks.push(new_task);
 
-        let phys_p4 = if let Some(mapper) = &*super::allocator::MAPPER.lock() {
-            use x86_64::{structures::paging::MapperAllSizes, VirtAddr};
-
-            mapper
-                .translate_addr(VirtAddr::new(super::memory::P4 as u64))
-                .unwrap()
-        } else {
-            panic!("WTF");
-        };
+        let phys_p4 = super::allocator::translate_addr(VirtAddr::new(super::memory::P4 as u64));
 
         unsafe {
             x86_64::registers::control::Cr3::write(
