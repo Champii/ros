@@ -6,8 +6,8 @@ use linked_list_allocator::LockedHeap;
 use spin::Mutex;
 use x86_64::{
     structures::paging::{
-        mapper::MapToError, FrameAllocator, Mapper, Page, PageTable, PageTableFlags, PhysFrame,
-        RecursivePageTable, Size4KiB, UnusedPhysFrame,
+        mapper::MapToError, page::PageSize, FrameAllocator, Mapper, Page, PageTable,
+        PageTableFlags, PhysFrame, RecursivePageTable, Size4KiB, UnusedPhysFrame,
     },
     PhysAddr, VirtAddr,
 };
@@ -45,7 +45,7 @@ pub fn alloc_page(page_addr: VirtAddr) -> PhysAddr {
     let page_addr: Page<Size4KiB> = Page::containing_address(page_addr);
 
     // TODO: Check if page is already used
-    if let Some(ref mut falloc) = *FRAME_ALLOCATOR.lock() {
+    use_allocator(|falloc| {
         let frame = falloc
             .allocate_frame()
             .ok_or(MapToError::FrameAllocationFailed)
@@ -55,6 +55,7 @@ pub fn alloc_page(page_addr: VirtAddr) -> PhysAddr {
 
         serial_println!(
             "Alloc page {:#?} -> {:#?}",
+            // "Alloc page {:#?} ",
             page_addr,
             frame.start_address()
         );
@@ -71,9 +72,7 @@ pub fn alloc_page(page_addr: VirtAddr) -> PhysAddr {
         } else {
             panic!("alloc_page(): Cannot access MAPPER");
         }
-    } else {
-        panic!("alloc_page(): Cannot access FRAME_ALLOCATOR");
-    }
+    })
 }
 
 pub fn translate_addr(virt: VirtAddr) -> PhysAddr {
@@ -86,50 +85,100 @@ pub fn translate_addr(virt: VirtAddr) -> PhysAddr {
     }
 }
 
-pub fn map_to(page_addr: VirtAddr, frame: UnusedPhysFrame, flags: PageTableFlags) {
-    let page_addr: Page<Size4KiB> = Page::containing_address(page_addr);
+pub fn translate_addr_with(virt: VirtAddr, mapper: &RecursivePageTable<'static>) -> PhysAddr {
+    use x86_64::structures::paging::MapperAllSizes;
 
-    if let Some(ref mut falloc) = *FRAME_ALLOCATOR.lock() {
+    mapper.translate_addr(virt).unwrap()
+}
+
+pub fn map_to(page_addr: VirtAddr, frame: UnusedPhysFrame, flags: PageTableFlags) {
+    if let Some(ref mut mapper) = *MAPPER.lock() {
+        map_to_with(page_addr, frame, flags, mapper);
+    } else {
+        panic!("map_to(): Cannot get MAPPER");
+    }
+}
+
+pub fn map_to_with<M, S>(
+    page_addr: VirtAddr,
+    frame: UnusedPhysFrame<S>,
+    flags: PageTableFlags,
+    mapper: &mut M,
+) where
+    S: PageSize,
+    M: Mapper<S>,
+{
+    let page_addr: Page<S> = Page::containing_address(page_addr);
+
+    use_allocator(|falloc| {
         serial_println!(
             "Alloc page (map_to) {:#?} -> {:#?}",
             page_addr,
             frame.start_address()
         );
 
-        if let Some(ref mut mapper) = *MAPPER.lock() {
-            mapper
-                .map_to(page_addr, frame, flags, falloc)
-                .unwrap()
-                .flush();
-        } else {
-            panic!("map_to(): Cannot get MAPPER");
-        }
-    } else {
-        panic!("map_to(): Cannot get FRAME_ALLOCATOR");
-    }
+        mapper
+            .map_to(page_addr, frame, flags, falloc)
+            .unwrap()
+            .flush();
+    });
+}
+
+pub fn map_to_with_alloc<M, S, F>(
+    page_addr: VirtAddr,
+    frame: UnusedPhysFrame<S>,
+    flags: PageTableFlags,
+    mapper: &mut M,
+    falloc: &mut F,
+) where
+    S: PageSize,
+    M: Mapper<S>,
+    F: FrameAllocator<Size4KiB>,
+{
+    let page_addr: Page<S> = Page::containing_address(page_addr);
+
+    serial_println!(
+        "Alloc page (map_to) {:#?} -> {:#?}",
+        page_addr,
+        frame.start_address()
+    );
+
+    mapper
+        .map_to(page_addr, frame, flags, falloc)
+        .unwrap()
+        .flush();
 }
 
 pub fn identity_map(frame: UnusedPhysFrame, flags: PageTableFlags) {
-    // let page_addr: Page<Size4KiB> = Page::containing_address(page_addr);
+    if let Some(ref mut mapper) = *MAPPER.lock() {
+        identity_map_with(frame, flags, mapper);
+    } else {
+        panic!("map_to(): Cannot get MAPPER");
+    }
+}
 
-    if let Some(ref mut falloc) = *FRAME_ALLOCATOR.lock() {
+pub fn identity_map_with<M, S>(frame: UnusedPhysFrame<S>, flags: PageTableFlags, mapper: &mut M)
+where
+    S: PageSize,
+    M: Mapper<S>,
+{
+    use_allocator(|falloc| {
         serial_println!(
             "Identity Alloc page (identity_map()) {:#?} ",
             frame.start_address()
         );
 
-        if let Some(ref mut mapper) = *MAPPER.lock() {
-            unsafe { mapper.identity_map(frame, flags, falloc).unwrap().flush() };
-        } else {
-            panic!("map_to(): Cannot get MAPPER");
-        }
+        unsafe { mapper.identity_map(frame, flags, falloc).unwrap() };
+    });
+}
+
+pub fn use_allocator<F, R>(f: F) -> R
+where
+    F: FnOnce(&mut BootInfoFrameAllocator) -> R,
+{
+    if let Some(ref mut falloc) = *FRAME_ALLOCATOR.lock() {
+        f(falloc)
     } else {
         panic!("map_to(): Cannot get FRAME_ALLOCATOR");
     }
 }
-
-// pub fn kmalloc(size: usize) -> Result<core::ptr::NonNull<u8>, AllocErr> {
-//     ALLOCATOR
-//         .lock()
-//         .allocate_first_fit(Layout::for_value(&size))
-// }

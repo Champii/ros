@@ -19,7 +19,6 @@ lazy_static! {
         idt.debug.set_handler_fn(not_implemented_yet);
         idt.non_maskable_interrupt
             .set_handler_fn(not_implemented_yet);
-        idt.breakpoint.set_handler_fn(not_implemented_yet);
         idt.overflow.set_handler_fn(not_implemented_yet);
         idt.bound_range_exceeded.set_handler_fn(not_implemented_yet);
         idt.invalid_opcode.set_handler_fn(not_implemented_yet);
@@ -68,14 +67,14 @@ lazy_static! {
     };
 }
 pub fn init_idt() {
-    serial_println!("Init IDT:");
-
     IDT.load();
+
+    serial_println!("       Init PICS");
+    unsafe { PICS.lock().initialize() };
 }
 
 extern "x86-interrupt" fn not_implemented_yet(stack_frame: &mut InterruptStackFrame) {
     serial_println!("INTERRUPT: NOT IMPLEMENTED: {:#?}", stack_frame);
-
     println!("EXCEPTION: NOT IMPLEMENTED\n{:#?}", stack_frame);
 
     loop {}
@@ -87,8 +86,10 @@ extern "x86-interrupt" fn not_implemented_yet_code(
 ) {
     serial_println!("INTERRUPT: NOT IMPLEMENTED: {:#?}", stack_frame);
     println!("EXCEPTION: NOT IMPLEMENTED\n{:#?}", stack_frame);
+
     loop {}
 }
+
 extern "x86-interrupt" fn breakpoint_handler(stack_frame: &mut InterruptStackFrame) {
     serial_println!("INTERRUPT: Breakpoint: {:#?}", stack_frame);
 
@@ -151,6 +152,17 @@ extern "x86-interrupt" fn page_fault_handler(
     error_code: PageFaultErrorCode,
 ) {
     use x86_64::registers::control::Cr2;
+
+    // serial_println!(
+    //     "INTERRUPT: PageFault: {:#?} ({:#?})",
+    //     stack_frame,
+    //     error_code
+    // );
+    // println!("EXCEPTION: PAGE FAULT");
+    // println!("Accessed Address: {:?}", Cr2::read());
+    // println!("Error Code: {:?}", error_code);
+    // println!("{:#?}", stack_frame);
+    // hlt_loop();
 
     if !error_code.contains(PageFaultErrorCode::PROTECTION_VIOLATION) {
         super::allocator::alloc_page(Cr2::read());

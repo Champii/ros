@@ -35,6 +35,7 @@ pub mod interrupts;
 pub mod memory;
 pub mod schedule;
 pub mod serial;
+pub mod temporary_page;
 pub mod vga_buffer;
 
 #[cfg(not(test))]
@@ -54,34 +55,26 @@ pub fn hlt_loop() -> ! {
 pub fn init(multiboot_information_address: usize) {
     serial_println!("Kernel init");
 
-    use self::memory::BootInfoFrameAllocator;
-
-    // *BOOTINFO.lock() = Some(boot_info);
-
+    serial_println!("Init GDT:");
     gdt::init();
 
+    serial_println!("Init IDT:");
     interrupts::init_idt();
 
-    unsafe { interrupts::PICS.lock().initialize() };
-
     serial_println!("Enabling interrupts");
-
     x86_64::instructions::interrupts::enable();
 
     serial_println!("Init Paging");
-
-    let mut active_page_table = unsafe { memory::ActivePageTable::new() };
-
-    memory::ActivePageTable::init(multiboot_information_address);
+    let mut active_page_table =
+        unsafe { memory::ActivePageTable::new(multiboot_information_address) };
 
     serial_println!("Init Kernel Heap");
     allocator::init_heap().expect("heap initialization failed");
-    // Remap the kernel
+
     serial_println!("Remap Kernel");
     memory::remap_kernel(&mut active_page_table, multiboot_information_address);
 
     serial_println!("Starting Schduler");
-
     schedule::init();
 }
 
@@ -231,7 +224,7 @@ pub extern "C" fn _start(multiboot_information_address: usize) -> ! {
         let virt = VirtAddr::new(address);
         // new: use the `mapper.translate_addr` method
         if let Some(mapper) = &*allocator::MAPPER.lock() {
-            println!("{:?} -> {:?}", virt, mapper.translate_addr(virt));
+            serial_println!("{:?} -> {:?}", virt, mapper.translate_addr(virt));
         };
     }
 

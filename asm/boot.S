@@ -98,9 +98,26 @@ set_up_page_tables:
     or eax, 0b11 ; present + writable
     mov [p3_table], eax
 
-    ; map each P2 entry to a huge 2MiB page
+    ; ; map first P2 entry to P1 table
+    ; mov eax, p1_table
+    ; or eax, 0b11 ; present + writable
+    ; mov [p2_table], eax
+
+    ; identity map each P1 entry
     mov ecx, 0         ; counter variable
 
+; .map_p2_table:
+;     ; map ecx-th P2 entry to a huge page that starts at address 2MiB*ecx
+;     mov eax, 0x1000  ; 4KiB
+;     mul ecx            ; start address of ecx-th page
+;     or eax, 0b11 ; present + writable
+;     mov [p2_table + ecx * 8], eax ; map ecx-th entry
+
+;     inc ecx            ; increase counter
+;     cmp ecx, 512       ; if counter == 512, the whole P2 table is mapped
+;     jne .map_p2_table  ; else map the next entry
+
+;     ret
 .map_p2_table:
     ; map ecx-th P2 entry to a huge page that starts at address 2MiB*ecx
     mov eax, 0x200000  ; 2MiB
@@ -119,6 +136,7 @@ enable_paging:
     mov eax, p4_table
     mov cr3, eax
 
+
     ; enable PAE-flag in cr4 (Physical Address Extension)
     mov eax, cr4
     or eax, 1 << 5
@@ -134,6 +152,13 @@ enable_paging:
     mov eax, cr0
     or eax, 1 << 31
     mov cr0, eax
+
+    ; mov eax, 0x2f4b2f4f
+    ; mov dword [0xb8000], eax
+    ; mov eax, 0x2f592f41
+    ; mov dword [0xb8004], eax
+    ; .loop:
+    ; jmp .loop
 
     ret
 
@@ -154,8 +179,11 @@ p3_table:
     resb 4096
 p2_table:
     resb 4096
+    ; resb 4096
+; p1_table:
+;     resb 4096
 stack_bottom:
-    resb 4096 * 16
+    resb 4096 * 16 ; 64kb
 stack_top:
 
 section .rodata

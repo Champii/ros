@@ -17,7 +17,7 @@ lazy_static! {
         let mut tss = TaskStateSegment::new();
 
         tss.interrupt_stack_table[DOUBLE_FAULT_IST_INDEX as usize] = {
-            const STACK_SIZE: usize = 4096;
+            const STACK_SIZE: usize = 4096 * 16;
             static mut STACK: [u8; STACK_SIZE] = [0; STACK_SIZE];
 
             serial_println!("       Set kernel stack: Size: {:#?}", STACK_SIZE);
@@ -54,8 +54,6 @@ struct Selectors {
 }
 
 pub fn init() {
-    serial_println!("Init GDT:");
-
     use x86_64::instructions::segmentation::set_cs;
     use x86_64::instructions::tables::load_tss;
 
