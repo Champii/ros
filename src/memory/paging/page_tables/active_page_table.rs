@@ -3,7 +3,7 @@ use x86_64::{
     structures::paging::{
         PageTableFlags, PhysFrame, RecursivePageTable, Size4KiB, UnusedPhysFrame,
     },
-    PhysAddr, VirtAddr,
+    VirtAddr,
 };
 
 use crate::memory::allocator::{BootInfoFrameAllocator, FRAME_ALLOCATOR, MAPPER};
@@ -21,9 +21,7 @@ pub struct ActivePageTable {
 
 impl ActivePageTable {
     pub unsafe fn new(multiboot_information_address: usize) -> Self {
-        let frame = PhysFrame::<Size4KiB>::from_start_address(PhysAddr::new(0)).unwrap();
-
-        let mutable_page_4 = unsafe { get_page4_virt_ptr(VirtAddr::from_ptr(P4)) };
+        let mutable_page_4 = get_page4_virt_ptr(VirtAddr::from_ptr(P4));
 
         Self {
             frame: Self::init(multiboot_information_address),

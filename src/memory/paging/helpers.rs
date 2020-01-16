@@ -1,12 +1,8 @@
 use crate::serial_println;
-use core::alloc::{AllocErr, Layout};
-use lazy_static::lazy_static;
-use linked_list_allocator::LockedHeap;
-use spin::Mutex;
 use x86_64::{
     structures::paging::{
-        mapper::MapToError, page::PageSize, FrameAllocator, Mapper, Page, PageTable,
-        PageTableFlags, PhysFrame, RecursivePageTable, Size4KiB, UnusedPhysFrame,
+        mapper::MapToError, page::PageSize, FrameAllocator, Mapper, Page, PageTableFlags,
+        RecursivePageTable, Size4KiB, UnusedPhysFrame,
     },
     PhysAddr, VirtAddr,
 };
@@ -27,7 +23,6 @@ pub fn alloc_page(page_addr: VirtAddr) -> PhysAddr {
 
         serial_println!(
             "Alloc page {:#?} -> {:#?}",
-            // "Alloc page {:#?} ",
             page_addr,
             frame.start_address()
         );

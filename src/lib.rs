@@ -62,17 +62,14 @@ pub fn init(multiboot_information_address: usize) {
         multiboot_information_address,
     );
 
-    // serial_println!("Init Kernel Heap");
-    // allocator::init_heap().expect("heap initialization failed");
+    serial_println!("Init Kernel Heap");
+    memory::allocator::init_heap().expect("heap initialization failed");
 
-    // serial_println!("Starting Schduler");
-    // schedule::init();
+    serial_println!("Starting Schduler");
+    schedule::init();
 }
 
 // tests
-
-#[cfg(test)]
-use bootloader::entry_point;
 
 pub fn test_runner(tests: &[&dyn Fn()]) {
     serial_println!("Running {} tests", tests.len());

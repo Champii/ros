@@ -1,10 +1,9 @@
 use core::ops::DerefMut;
 use x86_64::{
     structures::paging::{
-        mapper::MapToError, page::PageSize, FrameAllocator, Mapper, Page, PageTable,
-        PageTableFlags, PhysFrame, RecursivePageTable, Size4KiB, UnusedPhysFrame,
+        FrameAllocator, Mapper, Page, PageTable, PageTableFlags, Size4KiB, UnusedPhysFrame,
     },
-    PhysAddr, VirtAddr,
+    VirtAddr,
 };
 
 use super::ActivePageTable;

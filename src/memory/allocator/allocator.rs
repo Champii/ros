@@ -1,16 +1,9 @@
 use crate::memory::allocator::BootInfoFrameAllocator;
 use crate::serial_println;
-use core::alloc::{AllocErr, Layout};
 use lazy_static::lazy_static;
 use linked_list_allocator::LockedHeap;
 use spin::Mutex;
-use x86_64::{
-    structures::paging::{
-        mapper::MapToError, page::PageSize, FrameAllocator, Mapper, Page, PageTable,
-        PageTableFlags, PhysFrame, RecursivePageTable, Size4KiB, UnusedPhysFrame,
-    },
-    PhysAddr, VirtAddr,
-};
+use x86_64::structures::paging::{mapper::MapToError, RecursivePageTable};
 
 lazy_static! {
     pub static ref MAPPER: Mutex<Option<RecursivePageTable<'static>>> = { Mutex::new(None) };

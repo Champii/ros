@@ -1,8 +1,5 @@
-use core::ops::{Deref, DerefMut};
 use x86_64::{
-    structures::paging::{
-        Page, PageTable, PageTableFlags, PhysFrame, RecursivePageTable, Size4KiB, UnusedPhysFrame,
-    },
+    structures::paging::{Page, PageTableFlags, PhysFrame, Size4KiB, UnusedPhysFrame},
     PhysAddr, VirtAddr,
 };
 

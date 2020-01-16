@@ -1,11 +1,9 @@
-use alloc::{boxed::Box, rc::Rc, vec, vec::Vec};
+use alloc::{boxed::Box, vec, vec::Vec};
 use lazy_static::lazy_static;
 use spin::Mutex;
 use x86_64::{
-    structures::paging::{
-        PageTable, PageTableFlags, PageTableIndex, PhysFrame, RecursivePageTable,
-    },
-    PhysAddr, VirtAddr,
+    structures::paging::{PageTable, PhysFrame},
+    VirtAddr,
 };
 
 lazy_static! {
