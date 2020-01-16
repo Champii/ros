@@ -21,11 +21,11 @@ pub fn alloc_page(page_addr: VirtAddr) -> PhysAddr {
 
         let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
 
-        serial_println!(
-            "Alloc page {:#?} -> {:#?}",
-            page_addr,
-            frame.start_address()
-        );
+        // serial_println!(
+        //     "Alloc page {:#?} -> {:#?}",
+        //     page_addr,
+        //     frame.start_address()
+        // );
 
         if let Some(ref mut mapper) = *MAPPER.lock() {
             let start_addr = frame.start_address();
@@ -91,11 +91,11 @@ pub fn map_to_with_alloc<M, S, F>(
 {
     let page_addr: Page<S> = Page::containing_address(page_addr);
 
-    serial_println!(
-        "Alloc page (map_to) {:#?} -> {:#?}",
-        page_addr,
-        frame.start_address()
-    );
+    // serial_println!(
+    //     "Alloc page (map_to) {:#?} -> {:#?}",
+    //     page_addr,
+    //     frame.start_address()
+    // );
 
     mapper
         .map_to(page_addr, frame, flags, falloc)
@@ -117,10 +117,10 @@ where
     M: Mapper<S>,
 {
     use_global_allocator(|falloc| {
-        serial_println!(
-            "Identity Alloc page (identity_map()) {:#?} ",
-            frame.start_address()
-        );
+        // serial_println!(
+        //     "Identity Alloc page (identity_map()) {:#?} ",
+        //     frame.start_address()
+        // );
 
         unsafe { mapper.identity_map(frame, flags, falloc).unwrap() };
     });

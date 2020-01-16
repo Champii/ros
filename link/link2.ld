@@ -4,7 +4,7 @@ ENTRY(start)
 SECTIONS {
   . = 1M;
 
-  .rodata :
+  .rodata BLOCK(4K) : ALIGN(4K)
   {
     /* ensure that the multiboot header is at the beginning */
     KEEP(*(.multiboot_header))
@@ -12,31 +12,31 @@ SECTIONS {
     . = ALIGN(4K);
   }
 
-  .text :
+  .text BLOCK(4K) : ALIGN(4K)
   {
     *(.text .text.*)
     . = ALIGN(4K);
   }
 
-  .data :
+  .data BLOCK(4K) : ALIGN(4K)
   {
     *(.data .data.*)
     . = ALIGN(4K);
   }
 
-  .bss :
+  .bss BLOCK(4K) : ALIGN(4K)
   {
     *(.bss .bss.*)
     . = ALIGN(4K);
   }
 
-  .got :
+  .got BLOCK(4K) : ALIGN(4K)
   {
     *(.got)
     . = ALIGN(4K);
   }
 
-  .got.plt :
+  .got.plt BLOCK(4K) : ALIGN(4K)
   {
     *(.got.plt)
     . = ALIGN(4K);
@@ -52,13 +52,14 @@ SECTIONS {
     . = ALIGN(4K);
   }
 
-      /DISCARD/ :
-    {
-        *(.*)
-        *(.symtab)
-        *(.strtab)
-        *(.strtab)
-        *(.shstrtab)
-    }
+
+  /DISCARD/ :
+  {
+      *(.*)
+      *(.symtab)
+      *(.strtab)
+      *(.strtab)
+      *(.shstrtab)
+  }
 
 }

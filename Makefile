@@ -13,3 +13,6 @@ build:
 run:
 	qemu-system-x86_64 -cdrom build/os.iso -device isa-debug-exit,iobase=0xf4,iosize=0x04 -serial stdio
 
+debug:
+	qemu-system-x86_64 -cdrom build/os.iso -d int -no-reboot -device isa-debug-exit,iobase=0xf4,iosize=0x04 -serial stdio
+

@@ -4,6 +4,7 @@ use lazy_static::lazy_static;
 use linked_list_allocator::LockedHeap;
 use spin::Mutex;
 use x86_64::structures::paging::{mapper::MapToError, RecursivePageTable};
+use x86_64::VirtAddr;
 
 lazy_static! {
     pub static ref MAPPER: Mutex<Option<RecursivePageTable<'static>>> = { Mutex::new(None) };
@@ -25,7 +26,7 @@ fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
 }
 
 pub fn init_heap() -> Result<(), MapToError> {
-    serial_println!("HERE2");
+    super::super::paging::helpers::alloc_page(VirtAddr::new(HEAP_START as u64));
 
     unsafe {
         ALLOCATOR.lock().init(HEAP_START, HEAP_SIZE);
