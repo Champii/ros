@@ -1,5 +1,4 @@
-use super::memory::BootInfoFrameAllocator;
-use super::serial_println;
+use crate::serial_println;
 use core::alloc::{AllocErr, Layout};
 use lazy_static::lazy_static;
 use linked_list_allocator::LockedHeap;
@@ -12,40 +11,13 @@ use x86_64::{
     PhysAddr, VirtAddr,
 };
 
-lazy_static! {
-    pub static ref MAPPER: Mutex<Option<RecursivePageTable<'static>>> = { Mutex::new(None) };
-}
-
-lazy_static! {
-    pub static ref FRAME_ALLOCATOR: Mutex<Option<BootInfoFrameAllocator>> = { Mutex::new(None) };
-}
-
-pub const HEAP_START: usize = 0x_4444_4444_0000;
-pub const HEAP_SIZE: usize = 100 * 1024; // 100 KiB
-
-#[global_allocator]
-static ALLOCATOR: LockedHeap = LockedHeap::empty();
-
-#[alloc_error_handler]
-fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
-    panic!("allocation error: {:?}", layout)
-}
-
-pub fn init_heap() -> Result<(), MapToError> {
-    serial_println!("HERE2");
-
-    unsafe {
-        ALLOCATOR.lock().init(HEAP_START, HEAP_SIZE);
-    }
-
-    Ok(())
-}
+use crate::memory::allocator::{BootInfoFrameAllocator, FRAME_ALLOCATOR, MAPPER};
 
 pub fn alloc_page(page_addr: VirtAddr) -> PhysAddr {
     let page_addr: Page<Size4KiB> = Page::containing_address(page_addr);
 
     // TODO: Check if page is already used
-    use_allocator(|falloc| {
+    use_global_allocator(|falloc| {
         let frame = falloc
             .allocate_frame()
             .ok_or(MapToError::FrameAllocationFailed)
@@ -108,20 +80,7 @@ pub fn map_to_with<M, S>(
     S: PageSize,
     M: Mapper<S>,
 {
-    let page_addr: Page<S> = Page::containing_address(page_addr);
-
-    use_allocator(|falloc| {
-        serial_println!(
-            "Alloc page (map_to) {:#?} -> {:#?}",
-            page_addr,
-            frame.start_address()
-        );
-
-        mapper
-            .map_to(page_addr, frame, flags, falloc)
-            .unwrap()
-            .flush();
-    });
+    use_global_allocator(|falloc| map_to_with_alloc(page_addr, frame, flags, mapper, falloc));
 }
 
 pub fn map_to_with_alloc<M, S, F>(
@@ -162,7 +121,7 @@ where
     S: PageSize,
     M: Mapper<S>,
 {
-    use_allocator(|falloc| {
+    use_global_allocator(|falloc| {
         serial_println!(
             "Identity Alloc page (identity_map()) {:#?} ",
             frame.start_address()
@@ -172,7 +131,7 @@ where
     });
 }
 
-pub fn use_allocator<F, R>(f: F) -> R
+pub fn use_global_allocator<F, R>(f: F) -> R
 where
     F: FnOnce(&mut BootInfoFrameAllocator) -> R,
 {

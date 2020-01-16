@@ -12,31 +12,20 @@
 
 extern crate alloc;
 
-use bootloader::BootInfo;
 use core::panic::PanicInfo;
-use lazy_static::lazy_static;
-use multiboot2::BootInformation;
-use spin::Mutex;
-use x86_64::VirtAddr;
-
-use alloc::sync::Arc;
 
 #[lang = "eh_personality"]
 #[no_mangle]
 pub extern "C" fn eh_personality() {}
 
-// lazy_static! {
-//     static ref BOOTINFO: Arc<Mutex<Option<&'static BootInformation>>> = { Mutex::new(None) };
-// }
-
-pub mod allocator;
 pub mod gdt;
 pub mod interrupts;
 pub mod memory;
 pub mod schedule;
 pub mod serial;
-pub mod temporary_page;
 pub mod vga_buffer;
+
+use memory::paging::page_tables::ActivePageTable;
 
 #[cfg(not(test))]
 #[panic_handler]
@@ -65,17 +54,19 @@ pub fn init(multiboot_information_address: usize) {
     x86_64::instructions::interrupts::enable();
 
     serial_println!("Init Paging");
-    let mut active_page_table =
-        unsafe { memory::ActivePageTable::new(multiboot_information_address) };
-
-    serial_println!("Init Kernel Heap");
-    allocator::init_heap().expect("heap initialization failed");
+    let mut active_page_table = unsafe { ActivePageTable::new(multiboot_information_address) };
 
     serial_println!("Remap Kernel");
-    memory::remap_kernel(&mut active_page_table, multiboot_information_address);
+    memory::paging::remap_kernel::remap_kernel(
+        &mut active_page_table,
+        multiboot_information_address,
+    );
 
-    serial_println!("Starting Schduler");
-    schedule::init();
+    // serial_println!("Init Kernel Heap");
+    // allocator::init_heap().expect("heap initialization failed");
+
+    // serial_println!("Starting Schduler");
+    // schedule::init();
 }
 
 // tests
@@ -223,7 +214,7 @@ pub extern "C" fn _start(multiboot_information_address: usize) -> ! {
     for &address in &addresses {
         let virt = VirtAddr::new(address);
         // new: use the `mapper.translate_addr` method
-        if let Some(mapper) = &*allocator::MAPPER.lock() {
+        if let Some(mapper) = &*memory::allocator::MAPPER.lock() {
             serial_println!("{:?} -> {:?}", virt, mapper.translate_addr(virt));
         };
     }

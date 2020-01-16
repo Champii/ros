@@ -82,7 +82,9 @@ impl Scheduler {
 
         self.tasks.push(new_task);
 
-        let phys_p4 = super::allocator::translate_addr(VirtAddr::new(super::memory::P4 as u64));
+        let phys_p4 = super::memory::paging::helpers::translate_addr(VirtAddr::new(
+            super::memory::paging::P4 as u64,
+        ));
 
         unsafe {
             x86_64::registers::control::Cr3::write(

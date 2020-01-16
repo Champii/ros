@@ -165,7 +165,7 @@ extern "x86-interrupt" fn page_fault_handler(
     // hlt_loop();
 
     if !error_code.contains(PageFaultErrorCode::PROTECTION_VIOLATION) {
-        super::allocator::alloc_page(Cr2::read());
+        super::memory::paging::helpers::alloc_page(Cr2::read());
     } else {
         serial_println!(
             "INTERRUPT: PageFault: {:#?} ({:#?})",

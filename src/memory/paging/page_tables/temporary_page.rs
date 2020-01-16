@@ -7,7 +7,7 @@ use x86_64::{
     PhysAddr, VirtAddr,
 };
 
-use super::memory::ActivePageTable;
+use super::ActivePageTable;
 
 pub struct TemporaryPage {
     page: Page,
@@ -30,7 +30,7 @@ impl TemporaryPage {
             "temporary page is already mapped"
         );
 
-        super::allocator::map_to_with_alloc(
+        super::super::helpers::map_to_with_alloc(
             self.page.start_address(),
             frame,
             PageTableFlags::WRITABLE | PageTableFlags::PRESENT,
@@ -58,7 +58,7 @@ struct TinyAllocator([Option<UnusedPhysFrame>; 3]);
 
 impl TinyAllocator {
     fn new() -> TinyAllocator {
-        super::allocator::use_allocator(|falloc| {
+        super::super::helpers::use_global_allocator(|falloc| {
             let mut f = || falloc.allocate_frame();
             let frames = [f(), f(), f()];
 
